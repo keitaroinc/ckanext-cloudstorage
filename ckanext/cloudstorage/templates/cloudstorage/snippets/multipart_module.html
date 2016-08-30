@@ -1,0 +1,15 @@
+<div
+    {% if h.cloudstorage_use_secure_urls() -%}
+        data-module="cloudstorage-multipart-upload"
+        data-module-cloud='S3'
+        data-module-package-id="_{{ pkg_name }}"
+    {%- endif %}
+>
+    {{ parent() }}
+
+{# <style type="text/css">
+    #resource-edit .image-upload .btn.btn-danger.btn-remove-url{
+        height: 20px;
+    }
+</style> #}
+</div>
