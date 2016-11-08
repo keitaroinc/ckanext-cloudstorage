@@ -13,11 +13,11 @@ class CloudStoragePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IUploader)
     plugins.implements(plugins.IRoutes, inherit=True)
     plugins.implements(plugins.IConfigurable)
-    plugins.implements(plugins.IResourceController, inherit=True)
     plugins.implements(plugins.IConfigurer)
     plugins.implements(plugins.IActions)
     plugins.implements(plugins.ITemplateHelpers)
     plugins.implements(plugins.IAuthFunctions)
+    plugins.implements(plugins.IResourceController, inherit=True)
 
     # IConfigurer
 
@@ -79,6 +79,30 @@ class CloudStoragePlugin(plugins.SingletonPlugin):
 
         return map
 
+    # IActions
+
+    def get_actions(self):
+        return {
+            'cloudstorage_initiate_multipart': m_action.initiate_multipart,
+            'cloudstorage_upload_multipart': m_action.upload_multipart,
+            'cloudstorage_finish_multipart': m_action.finish_multipart,
+            'cloudstorage_abort_multipart': m_action.abort_multipart,
+            'cloudstorage_check_multipart': m_action.check_multipart,
+            'cloudstorage_clean_multipart': m_action.clean_multipart,
+        }
+
+    # IAuthFunctions
+
+    def get_auth_functions(self):
+        return {
+            'cloudstorage_initiate_multipart': m_auth.initiate_multipart,
+            'cloudstorage_upload_multipart': m_auth.upload_multipart,
+            'cloudstorage_finish_multipart': m_auth.finish_multipart,
+            'cloudstorage_abort_multipart': m_auth.abort_multipart,
+            'cloudstorage_check_multipart': m_auth.check_multipart,
+            'cloudstorage_clean_multipart': m_auth.clean_multipart,
+        }
+
     # IResourceController
 
     def before_delete(self, context, resource, resources):
@@ -116,25 +140,3 @@ class CloudStoragePlugin(plugins.SingletonPlugin):
             for old_file in uploader.container.iterate_objects():
                 if old_file.name.startswith(upload_path):
                     old_file.delete()
-
-    # IActions
-
-    def get_actions(self):
-        return {
-            'cloudstorage_initiate_multipart': m_action.initiate_multipart,
-            'cloudstorage_upload_multipart': m_action.upload_multipart,
-            'cloudstorage_finish_multipart': m_action.finish_multipart,
-            'cloudstorage_abort_multipart': m_action.abort_multipart,
-            'cloudstorage_check_multipart': m_action.check_multipart,
-        }
-
-    # IAuthFunctions
-
-    def get_auth_functions(self):
-        return {
-            'cloudstorage_initiate_multipart': m_auth.initiate_multipart,
-            'cloudstorage_upload_multipart': m_auth.upload_multipart,
-            'cloudstorage_finish_multipart': m_auth.finish_multipart,
-            'cloudstorage_abort_multipart': m_auth.abort_multipart,
-            'cloudstorage_check_multipart': m_auth.check_multipart,
-        }
