@@ -22,6 +22,7 @@ ckan.module('cloudstorage-multipart-upload', function($, _) {
         _uploadName: null,
         _uploadedParts: null,
         _btnClick: null,
+        _btnClickFlood: null,
 
         initialize: function() {
             $.proxyAll(this, /_on/);
@@ -244,6 +245,7 @@ ckan.module('cloudstorage-multipart-upload', function($, _) {
             event.preventDefault();
             var dataset_id = this.options.packageId;
             this._btnClick = $(event.target).attr('value');
+            this._btnClickFlood = $(event.target).attr('data-flood_name');
             if (this._btnClick == 'go-dataset') {
                 this._onDisableSave(false);
                 var redirect_url = this.sandbox.url(
@@ -368,7 +370,7 @@ ckan.module('cloudstorage-multipart-upload', function($, _) {
                 'uploadId': this._uploadId,
                 'id': this._resourceId,
             }
-            if (self._btnClick == 'go-metadata') {
+            if (self._btnClick == 'go-metadata' || self._btnClick == 'go-flood-manage') {
                 data_dict.finish = true
             }
             this.sandbox.client.call(
@@ -391,6 +393,11 @@ ckan.module('cloudstorage-multipart-upload', function($, _) {
                             var redirect_url = self.sandbox.url(
                                 '/dataset/new_resource/' +
                                 self._packageId
+                            );
+                        } else if (self._btnClick == 'go-flood-manage') {
+                            var redirect_url = self.sandbox.url(
+                                'flood-projects/manage/' +
+                                self._btnClickFlood
                             );
                         } else {
                             var redirect_url = self.sandbox.url(
