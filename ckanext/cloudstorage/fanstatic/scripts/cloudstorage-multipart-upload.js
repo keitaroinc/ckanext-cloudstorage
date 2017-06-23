@@ -394,7 +394,7 @@ ckan.module('cloudstorage-multipart-upload', function($, _) {
                                 '/dataset/new_resource/' +
                                 self._packageId
                             );
-                        } else if (self._btnClick == 'go-flood-manage') {
+                        } else if (self._btnClick == 'go-metadata') {
                             var redirect_url = self.sandbox.url(
                                 'flood-projects/manage/' +
                                 self._btnClickFlood
