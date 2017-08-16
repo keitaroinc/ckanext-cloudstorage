@@ -22,7 +22,7 @@ ckan.module('cloudstorage-multipart-upload', function($, _) {
         _uploadName: null,
         _uploadedParts: null,
         _clickedBtn: null,
-        _redirect_url: null;
+        _redirect_url: null,
 
         initialize: function() {
             $.proxyAll(this, /_on/);
