@@ -365,6 +365,7 @@ ckan.module('cloudstorage-multipart-upload', function($, _) {
             var data_dict = {
                 'uploadId': this._uploadId,
                 'id': this._resourceId,
+                'save_action': this._clickedBtn
             }
             this.sandbox.client.call(
                 'POST',
