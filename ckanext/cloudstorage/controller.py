@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os.path
 
-from pylons import c
+from pylons import c, config
 from pylons.i18n import _
 
 from ckan import logic, model
@@ -32,8 +32,8 @@ class StorageController(base.BaseController):
 
         # This isn't a file upload, so either redirect to the source
         # (if available) or error out.
-        if resource.get('url_type') != 'upload':
-            url = resource.get('url')
+        url = resource.get('url')
+        if resource.get('url_type') != 'upload' and not url.startswith(config.get('ckan.site_url')):
             if not url:
                 base.abort(404, _('No download is available'))
             base.redirect(url)
