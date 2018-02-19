@@ -36,7 +36,8 @@ class StorageController(base.BaseController):
         if resource.get('url_type') != 'upload' and not url.startswith(config.get('ckan.site_url')):
             if not url:
                 base.abort(404, _('No download is available'))
-            base.redirect(url)
+            ## Fix add for updating unicode url, if the resource is missing 'upload' in 'resoure_type' field
+            base.redirect(str(url))
 
         if filename is None:
             # No filename was provided so we'll try to get one from the url.
