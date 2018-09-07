@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 import os.path
 
-from pylons import c, config
+from pylons import c
 from pylons.i18n import _
 
 from ckan import logic, model
 from ckan.lib import base, uploader
+import ckan.lib.helpers as h
 
 
 class StorageController(base.BaseController):
@@ -36,8 +37,7 @@ class StorageController(base.BaseController):
         if resource.get('url_type') != 'upload' and not url.startswith(config.get('ckan.site_url')):
             if not url:
                 base.abort(404, _('No download is available'))
-            ## Fix add for updating unicode url, if the resource is missing 'upload' in 'resoure_type' field
-            base.redirect(str(url))
+            h.redirect_to(url)
 
         if filename is None:
             # No filename was provided so we'll try to get one from the url.
@@ -51,4 +51,4 @@ class StorageController(base.BaseController):
         if uploaded_url is None:
             base.abort(404, _('No download is available'))
 
-        base.redirect(uploaded_url)
+        h.redirect_to(uploaded_url)
