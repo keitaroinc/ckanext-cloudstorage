@@ -43,7 +43,6 @@ class StorageController(base.BaseController):
             filename = os.path.basename(resource['url'])
 
         upload = uploader.get_resource_uploader(resource)
-
         # ignore resource name. Allows to download files, created by s3filestore
         prefix = upload.path_from_filename(resource['id'], 'name')
         prefix = prefix[:prefix.rindex('/')]
@@ -53,7 +52,9 @@ class StorageController(base.BaseController):
         if similar_files:
             _first = similar_files[0].name
             filename = _first[_first.rindex('/') + 1:]
-        uploaded_url = upload.get_url_from_filename(resource['id'], filename)
+        uploaded_url = upload.get_url_from_filename(
+            resource['id'], filename, True
+        )
 
         # The uploaded file is missing for some reason, such as the
         # provider being down.

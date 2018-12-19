@@ -186,7 +186,7 @@ class ResourceCloudStorage(CloudStorage):
             self.old_filename = old_resource.url
             resource['url_type'] = ''
 
-    def path_from_filename(self, rid, filename):
+    def path_from_filename(self, rid, filename, munged=False):
         """
         Returns a bucket path for the given resource_id and filename.
 
@@ -196,7 +196,7 @@ class ResourceCloudStorage(CloudStorage):
         return os.path.join(
             'resources',
             rid,
-            munge.munge_filename(filename)
+            filename if munged else munge.munge_filename(filename)
         )
 
     def upload(self, id, max_size=10):
@@ -259,7 +259,7 @@ class ResourceCloudStorage(CloudStorage):
                 # outstanding lease.
                 return
 
-    def get_url_from_filename(self, rid, filename):
+    def get_url_from_filename(self, rid, filename, munged=False):
         """
         Retrieve a publically accessible URL for the given resource_id
         and filename.
@@ -275,7 +275,7 @@ class ResourceCloudStorage(CloudStorage):
         :returns: Externally accessible URL or None.
         """
         # Find the key the file *should* be stored at.
-        path = self.path_from_filename(rid, filename)
+        path = self.path_from_filename(rid, filename, munged)
 
         # If advanced azure features are enabled, generate a temporary
         # shared access link instead of simply redirecting to the file.
