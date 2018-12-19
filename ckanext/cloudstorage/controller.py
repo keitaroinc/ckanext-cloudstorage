@@ -38,12 +38,21 @@ class StorageController(base.BaseController):
             if not url:
                 base.abort(404, _('No download is available'))
             h.redirect_to(url)
-
         if filename is None:
             # No filename was provided so we'll try to get one from the url.
             filename = os.path.basename(resource['url'])
 
         upload = uploader.get_resource_uploader(resource)
+
+        # ignore resource name. Allows to download files, created by s3filestore
+        prefix = upload.path_from_filename(resource['id'], 'name')
+        prefix = prefix[:prefix.rindex('/')]
+        similar_files = list(
+            upload.driver.iterate_container_objects(upload.container, prefix)
+        )
+        if similar_files:
+            _first = similar_files[0]
+            filename = _first[_first.rindex('/') + 1:]
         uploaded_url = upload.get_url_from_filename(resource['id'], filename)
 
         # The uploaded file is missing for some reason, such as the
