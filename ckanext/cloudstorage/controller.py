@@ -51,7 +51,7 @@ class StorageController(base.BaseController):
             upload.driver.iterate_container_objects(upload.container, prefix)
         )
         if similar_files:
-            _first = similar_files[0]
+            _first = similar_files[0].name
             filename = _first[_first.rindex('/') + 1:]
         uploaded_url = upload.get_url_from_filename(resource['id'], filename)
 
