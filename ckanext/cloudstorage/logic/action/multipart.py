@@ -152,7 +152,7 @@ def upload_multipart(context, data_dict):
             uploader, upload.name) + '?partNumber={0}&uploadId={1}'.format(
                 part_number, upload_id),
         method='PUT',
-        data=bytearray(part_content.file.read())
+        data=bytearray(part_content.read())
     )
     if resp.status != 200:
         raise toolkit.ValidationError('Upload failed: part %s' % part_number)
