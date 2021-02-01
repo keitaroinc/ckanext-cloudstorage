@@ -5,6 +5,7 @@ import mimetypes
 import os
 import six
 from six.moves.urllib.parse import urljoin
+from tempfile import SpooledTemporaryFile
 from ast import literal_eval
 from datetime import datetime, timedelta
 import traceback
@@ -201,6 +202,7 @@ class ResourceCloudStorage(CloudStorage):
         self.filename = None
         self.old_filename = None
         self.file = None
+        self.temp_filename = None
         self.resource = resource
 
         upload_field_storage = resource.pop('upload', None)
@@ -212,6 +214,10 @@ class ResourceCloudStorage(CloudStorage):
                 upload_field_storage.filename:
             self.filename = munge.munge_filename(upload_field_storage.filename)
             self.file_upload = _get_underlying_file(upload_field_storage)
+            if isinstance(self.file_upload, SpooledTemporaryFile):
+                timestamp = datetime.timestamp(datetime.now())
+                self.temp_filename = "/tmp/{0}_{1}".format(timestamp, upload_field_storage.filename)
+                upload_field_storage.save(self.temp_filename)
             resource['url'] = self.filename
             resource['url_type'] = 'upload'
         elif multipart_name and self.can_use_advanced_aws:
@@ -245,6 +251,14 @@ class ResourceCloudStorage(CloudStorage):
             rid,
             munge.munge_filename(filename)
         )
+
+    def _delete_temp_file(self, path):
+        print("\t - Deleting temporary file: {0}".format(path))
+        try:
+            os.remove(path)
+            self.temp_filename = None
+        except FileNotFoundError as e:
+            print(e)
 
     def upload(self, id, max_size=10):
         """
@@ -297,33 +311,40 @@ class ResourceCloudStorage(CloudStorage):
 
                     # check if already uploaded
                     object_name = self.path_from_filename(id, self.filename)
+                    file_name = file_upload.name or self.temp_filename
                     try:
                         cloud_object = self.container.get_object(object_name=object_name)
                         print("\t Object found, checking size {0}: {1}".format(object_name, cloud_object.size))
-                        file_size = os.path.getsize(file_upload.name)
-                        print("\t - File size {0}: {1}".format(file_upload.name, file_size))
+                        file_size = os.path.getsize(file_name)
+                        print("\t - File size {0}: {1}".format(file_name, file_size))
                         if file_size == int(cloud_object.size):
                             print("\t Size fits, checking hash {0}: {1}".format(object_name, cloud_object.hash))
-                            hash_file = hashlib.md5(open(file_upload.name, 'rb').read()).hexdigest()
-                            print("\t - File hash {0}: {1}".format(file_upload.name, hash_file))
+                            hash_file = hashlib.md5(open(file_name, 'rb').read()).hexdigest()
+                            print("\t - File hash {0}: {1}".format(file_name, hash_file))
                             # basic hash
                             if hash_file == cloud_object.hash:
                                 print("\t => File found, matching hash, skipping upload")
+                                if self.temp_filename:
+                                    self._delete_temp_file(self.temp_filename)
                                 return
                             # multipart hash
-                            multi_hash_file = _md5sum(file_upload.name)
-                            print("\t - File multi hash {0}: {1}".format(file_upload.name, multi_hash_file))
+                            multi_hash_file = _md5sum(file_name)
+                            print("\t - File multi hash {0}: {1}".format(file_name, multi_hash_file))
                             if multi_hash_file == cloud_object.hash:
                                 print("\t => File found, matching hash, skipping upload")
+                                if self.temp_filename:
+                                    self._delete_temp_file(self.temp_filename)
                                 return
                         print("\t Resource found in the cloud but outdated, uploading")
                     except ObjectDoesNotExistError:
                         print("\t Resource not found in the cloud, uploading")
 
                     # FIX: replaced call with a simpler version
-                    with open(file_upload.name, 'rb') as iterator:
+                    with open(file_name, 'rb') as iterator:
                         self.container.upload_object_via_stream(iterator=iterator, object_name=object_name)
-                    print("\t => UPLOADED {0}: {1}".format(file_upload.name, object_name))
+                    print("\t => UPLOADED {0}: {1}".format(file_name, object_name))
+                    if self.temp_filename:
+                        self._delete_temp_file(self.temp_filename)
                 except ValueError as v:
                     print(traceback.format_exc())
                     raise v
