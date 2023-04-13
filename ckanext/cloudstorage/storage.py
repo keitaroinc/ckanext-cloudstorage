@@ -20,6 +20,16 @@ from libcloud.storage.providers import get_driver
 from libcloud.storage.types import ObjectDoesNotExistError, Provider
 from werkzeug.datastructures import FileStorage as FlaskFileStorage
 
+import binascii
+import collections
+import hashlib
+import sys
+
+# google-auth
+from google.oauth2 import service_account
+import six
+from six.moves.urllib.parse import quote
+
 config = p.toolkit.config
 
 log = logging.getLogger(__name__)
@@ -175,6 +185,30 @@ class CloudStorage(object):
 
                 # Shut the linter up.
                 assert boto
+                return True
+            except ImportError:
+                pass
+
+        return False
+    
+    @property
+    def can_use_advanced_gcp(self):
+        """
+        `True` if the `google` module is installed and ckanext-cloudstorage has
+        been configured to use GCP, otherwise `False`.
+        """
+        # Are we even using AWS?
+        if "GOOGLE_STORAGE" in self.driver_name:
+            if "host" not in self.driver_options:
+                # newer libcloud versions(must-use for python3)
+                # requires host for secure URLs
+                return False
+            try:
+                # Yes? Is the google package available?
+                import google.cloud
+
+                # Shut the linter up.
+                assert google.cloud
                 return True
             except ImportError:
                 pass
@@ -390,6 +424,100 @@ class ResourceCloudStorage(CloudStorage):
 
         return self.get_url_by_path(path, content_type)
 
+
+    def generate_signed_url_gcp(self, bucket_name, object_name,
+                        subresource=None, expiration=604800, http_method='GET',
+                        query_parameters=None, headers=None):
+        
+        import datetime # importing here just to make sure it doesn't break anything with the previous imports 
+
+        if expiration > 604800: # 7 days (in seconds)
+            print('Expiration Time can\'t be longer than 604800 seconds (7 days).')
+            sys.exit(1)
+
+        escaped_object_name = quote(six.ensure_binary(object_name), safe=b'/~')
+        canonical_uri = '/{}'.format(escaped_object_name)
+
+        datetime_now = datetime.datetime.now(tz=datetime.timezone.utc)
+        request_timestamp = datetime_now.strftime('%Y%m%dT%H%M%SZ')
+        datestamp = datetime_now.strftime('%Y%m%d')
+
+        print("GOOGLE STORAGE - BUCKET NAME: ")
+        print(bucket_name)
+
+        # Load file with the service account information from the config file (ckan.ini)
+        service_account_path = config['ckanext.cloudstorage.google_service_account_json']
+
+        google_credentials = service_account.Credentials.from_service_account_file(
+            service_account_path) #providing the path to the json file with the service account information
+        client_email = google_credentials.service_account_email
+        credential_scope = '{}/auto/storage/goog4_request'.format(datestamp)
+        credential = '{}/{}'.format(client_email, credential_scope)
+
+        if headers is None:
+            headers = dict()
+        host = '{}.storage.googleapis.com'.format(bucket_name)
+        headers['host'] = host
+
+        canonical_headers = ''
+        ordered_headers = collections.OrderedDict(sorted(headers.items()))
+        for k, v in ordered_headers.items():
+            lower_k = str(k).lower()
+            strip_v = str(v).lower()
+            canonical_headers += '{}:{}\n'.format(lower_k, strip_v)
+
+        signed_headers = ''
+        for k, _ in ordered_headers.items():
+            lower_k = str(k).lower()
+            signed_headers += '{};'.format(lower_k)
+        signed_headers = signed_headers[:-1]  # remove trailing ';'
+
+        if query_parameters is None:
+            query_parameters = dict()
+        query_parameters['X-Goog-Algorithm'] = 'GOOG4-RSA-SHA256'
+        query_parameters['X-Goog-Credential'] = credential
+        query_parameters['X-Goog-Date'] = request_timestamp
+        query_parameters['X-Goog-Expires'] = expiration
+        query_parameters['X-Goog-SignedHeaders'] = signed_headers
+        if subresource:
+            query_parameters[subresource] = ''
+
+        canonical_query_string = ''
+        ordered_query_parameters = collections.OrderedDict(
+            sorted(query_parameters.items()))
+        for k, v in ordered_query_parameters.items():
+            encoded_k = quote(str(k), safe='')
+            encoded_v = quote(str(v), safe='')
+            canonical_query_string += '{}={}&'.format(encoded_k, encoded_v)
+        canonical_query_string = canonical_query_string[:-1]  # remove trailing '&'
+
+        canonical_request = '\n'.join([http_method,
+                                    canonical_uri,
+                                    canonical_query_string,
+                                    canonical_headers,
+                                    signed_headers,
+                                    'UNSIGNED-PAYLOAD'])
+
+        canonical_request_hash = hashlib.sha256(
+            canonical_request.encode()).hexdigest()
+
+        string_to_sign = '\n'.join(['GOOG4-RSA-SHA256',
+                                    request_timestamp,
+                                    credential_scope,
+                                    canonical_request_hash])
+
+        # signer.sign() signs using RSA-SHA256 with PKCS1v15 padding
+        signature = binascii.hexlify(
+            google_credentials.signer.sign(string_to_sign)
+        ).decode()
+
+        scheme_and_host = '{}://{}'.format('https', host)
+        signed_url = '{}{}?{}&x-goog-signature={}'.format(
+            scheme_and_host, canonical_uri, canonical_query_string, signature)
+
+        return signed_url
+
+
     def get_url_by_path(self, path, content_type=None):
         """
         Retrieve a publically accessible URL for the given path
@@ -449,6 +577,7 @@ class ResourceCloudStorage(CloudStorage):
                 generate_url_params["response_headers"] = {"Content-Type": content_type}
             return s3_connection.generate_url_sigv4(**generate_url_params)
 
+
         # Find the object for the given key.
         try:
             obj = self.container.get_object(path)
@@ -459,7 +588,21 @@ class ResourceCloudStorage(CloudStorage):
 
         # Not supported by all providers!
         try:
-            return self.driver.get_object_cdn_url(obj)
+            # Since we are using GCP, we need to generate a signed URL for downloading the files we want,
+            # because the initial google_storage driver (from the libcloud library) does not support the get_object_cdn_url method
+            if "GOOGLE_STORAGE" in self.driver_name:
+                print("Using GOOGLE_STORAGE DRIVER")
+
+                bucket = self.container_name
+
+                url = self.generate_signed_url_gcp(bucket, path) #bucket is the GCP bucket, path is the file name (blob)
+                print("Generated GET signed URL:")
+                print(url)
+                return url
+            
+            else:
+                return self.driver.get_object_cdn_url(obj)
+            
         except NotImplementedError:
             if "S3" in self.driver_name:
                 return urljoin(
@@ -468,13 +611,16 @@ class ResourceCloudStorage(CloudStorage):
                         container=self.container_name,
                         path=path,
                     ),
-                )
+                )                    
             # This extra 'url' property isn't documented anywhere, sadly.
             # See azure_blobs.py:_xml_to_object for more.
             elif "url" in obj.extra:
                 return obj.extra["url"]
+            
             raise
 
     @property
     def package(self):
         return model.Package.get(self.resource["package_id"])
+
+
