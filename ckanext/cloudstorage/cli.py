@@ -27,5 +27,11 @@ def migrate(path, resource):
     utils.migrate(path, resource)
 
 
+@cloudstorage.command("assets-to-gcp")
+def assets_to_gcp():
+    """Upload assets from local storage to GCP."""
+    utils.assets_to_gcp()
+
+
 def get_commands():
     return [cloudstorage]

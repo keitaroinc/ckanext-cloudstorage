@@ -5,11 +5,14 @@ import mimetypes
 import os.path
 import tempfile
 
+from google.cloud import storage
+
 import ckan.lib.helpers as h
 import ckan.plugins.toolkit as tk
 from ckan import model
 from ckan.lib import base, uploader
 from ckanapi import LocalCKAN
+from ckantoolkit import config
 from werkzeug.datastructures import FileStorage as FakeFileStorage
 
 from ckanext.cloudstorage.storage import CloudStorage, ResourceCloudStorage
@@ -111,6 +114,32 @@ def migrate(path, single_id):
                 log_file.name, failed
             )
         )
+
+
+def assets_to_gcp():
+
+    storage_path = config.get('ckan.storage_path',
+                              '/var/lib/ckan/default/resources')
+    path_to_json = config.get(
+        'ckanext.cloudstorage.google_service_account_json')
+    bucket_name = config.get('ckanext.cloudstorage.container_name')
+
+    group_ids_and_paths = {}
+    for root, dirs, files in os.walk(storage_path):
+        if root[-5:] == 'group':
+            for idx, group_file in enumerate(files):
+                group_ids_and_paths[group_file] = os.path.join(
+                    root, files[idx])
+
+    print('{0} group assets found in the database'.format(
+        len(group_ids_and_paths.keys())))
+    storage_client = storage.Client.from_service_account_json(path_to_json)
+    bucket = storage_client.bucket(bucket_name)
+    for resource_id, file_name in group_ids_and_paths.items():
+        blob = bucket.blob('storage/uploads/group/{resource_id}'.
+                           format(resource_id=resource_id))
+        blob.upload_from_filename(file_name)
+        print('{file_name} was uploaded'.format(file_name=file_name))
 
 
 def resource_download(id, resource_id, filename=None):

@@ -20,9 +20,7 @@ from libcloud.storage.providers import get_driver
 from libcloud.storage.types import ObjectDoesNotExistError, Provider
 from werkzeug.datastructures import FileStorage as FlaskFileStorage
 
-import binascii
 import collections
-import hashlib
 import sys
 
 # google-auth
