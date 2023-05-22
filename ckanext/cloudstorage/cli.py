@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import click
-
 import ckanext.cloudstorage.utils as utils
 
 
@@ -29,3 +28,6 @@ def migrate(path, resource):
 
 def get_commands():
     return [cloudstorage]
+
+
+# Example command: ckan -c /etc/ckan/default/ckan.ini cloudstorage migrate
