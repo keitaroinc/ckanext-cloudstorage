@@ -1,0 +1,9 @@
+{% ckan_extends %}
+
+
+{% block custom_fields %}
+     {{ super() }}
+     {% set max_size = h.cloudstorage_max_upload_size() %}
+     {% snippet 'cloudstorage/snippets/multipart_module.html', pkg_name=pkg_name, parent=super, max_size=max_size %}
+
+{% endblock %}
