@@ -17,8 +17,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "apache-libcloud~=3.6",
-        "ckanapi",
+        # dependencies are specified in requirements.txt
+        # instead of here       
     ],
     entry_points="""
         [ckan.plugins]
