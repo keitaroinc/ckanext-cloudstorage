@@ -89,7 +89,7 @@ def migrate(path, single_id):
         except tk.ObjectNotFound:
             print("\tResource not found")
             continue
-        if resource["url_type"] != "upload":
+        if resource["url_type"] != "upload" or not resource_id:
             print("\t`url_type` is not `upload`. Skip")
             continue
 
