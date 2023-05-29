@@ -86,8 +86,9 @@ def migrate(path, single_id):
         )
         try:
             if resource_id:
-                resource = lc.action.resource_show(id=resource_id)
+                resource = lc.action.resource_show(id=resource_id) 
             else:
+                print("Resource skiped has no id in database")
                 continue
         except tk.ObjectNotFound:
             print("\tResource not found")
