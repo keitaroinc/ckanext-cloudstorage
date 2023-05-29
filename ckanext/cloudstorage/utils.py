@@ -85,11 +85,14 @@ def migrate(path, single_id):
             )
         )
         try:
-            resource = lc.action.resource_show(id=resource_id)
+            if resource_id:
+                resource = lc.action.resource_show(id=resource_id)
+            else:
+                continue
         except tk.ObjectNotFound:
             print("\tResource not found")
             continue
-        if resource["url_type"] != "upload" or not resource_id:
+        if resource["url_type"] != "upload":
             print("\t`url_type` is not `upload`. Skip")
             continue
 
