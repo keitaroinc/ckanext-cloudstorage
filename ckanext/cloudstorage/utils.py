@@ -146,6 +146,28 @@ def assets_to_gcp():
         print('{file_name} was uploaded'.format(file_name=file_name))
 
 
+def check_resources():
+
+    resource_id = {}
+    storage_path = uploader.get_storage_path() + "/resources"
+
+    for dirname, dirnames, filenames in os.walk(storage_path):
+
+        # print path to all subdirectories first.
+        # for subdirname in dirnames:
+        #     print(os.path.join(dirname, subdirname))
+
+        for filename in filenames:
+            resource_id[filename] = dirname[-7:-4] + dirname[-3:] + filename
+
+            print(resource_id[filename])
+            # path to all filenames with filenames
+            # print(os.path.join(dirname, filename))
+
+    print('Number of total resources in storage is {}'.format(len(resource_id)))
+    print(storage_path)
+
+
 def resource_download(id, resource_id, filename=None):
     context = {
         "model": model,

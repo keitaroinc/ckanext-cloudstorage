@@ -33,5 +33,11 @@ def assets_to_gcp():
     utils.assets_to_gcp()
 
 
+@cloudstorage.command("check-resources")
+def check_resources():
+    """Check resources in storage and in GCP bucket"""
+    utils.check_resources()
+
+
 def get_commands():
     return [cloudstorage]
