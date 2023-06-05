@@ -20,11 +20,9 @@ def fix_cors(domains):
 
 
 @cloudstorage.command()
-@click.argument("path")
-@click.argument("resource", required=False)
-def migrate(path, resource):
+def migrate():
     """Upload local storage to the remote."""
-    utils.migrate(path, resource)
+    utils.migrate()
 
 
 @cloudstorage.command("assets-to-gcp")
