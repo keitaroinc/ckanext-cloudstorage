@@ -48,18 +48,9 @@ def fix_cors(domains):
 
 def migrate():
 
-    # The resource folder is stuctured like so on disk:
-    # - storage/
-    #   - ...
-    # - resources/
-    #   - <3 letter prefix>
-    #     - <3 letter prefix>
-    #       - <remaining resource_id as filename>
-    #       ...
-    #     ...
-    #   ...
-    # Only the bottom level of the tree actually contains any files. We
-    # don't care at all about the overall structure.
+    # the resources file structure on the bucket on this extension is like
+    # resources/{resource_id}/{filename from databse}
+    # it is not coping the directory structure on CKAN storage
 
     resources_ids = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
     resource_ids_and_paths = dict((x, y) for x, y in resources_ids)
@@ -86,10 +77,16 @@ def migrate():
                 blob = bucket.blob('resources/{resource_id}/{file_name}'.
                                    format(resource_id=r_id,
                                           file_name=resource_name))
-                blob.upload_from_filename(local_path)
-                migrated_index += 1
-                print(resource_id[filename], 'is migrated to S3 bucket')
-                
+                try:
+                    blob.upload_from_filename(local_path)
+                    migrated_index += 1
+                    print(resource_id[filename], 'is migrated to S3 bucket')
+
+                except Exception as e:
+                    print(e)
+                    print(resource_id[filename], 'is not migrated ')
+                    not_migrated_index += 1
+                    
             else:
                 print(resource_id[filename], 'missing id in database - will not be migrated')
                 not_migrated_index += 1
