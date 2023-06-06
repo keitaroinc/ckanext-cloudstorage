@@ -52,8 +52,8 @@ def migrate():
     # resources/{resource_id}/{filename from databse}
     # it is not coping the directory structure on CKAN storage
 
-    resources_ids = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
-    resource_ids_and_paths = dict((x, y) for x, y in resources_ids)
+    resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
+    resource_ids_and_paths = dict((x, y) for x, y in resource_id_url)
  
     resource_id = {}
     migrated_index = 0
@@ -116,29 +116,31 @@ def assets_to_gcp():
     
 def check_resources():
 
-    resource_id = {}
-    storage_path = uploader.get_storage_path() + "/resources"
-    index = 0
+    resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
+    resultDictionary = dict((x, y) for x, y in resource_id_url)
+    print('Number of total active resources in database is {}'.format(
+                                                len(resultDictionary)))
+    blobs = storage_client.list_blobs(bucket_name)
+    count = 0
+    for blob in blobs:
+        gcp_resource_id = blob.name[10:46]
+        if gcp_resource_id in resultDictionary:
+            count += 1
+            print(blob.name, "has id in database")
+        else:
+            count += 1
+            print(blob.name, "has no id in database and will be deleted")
+            # blob.delete()
+            print(blob.name, "is deleted")
 
-    for dirname, dirnames, filenames in os.walk(storage_path):
+    print('Number of active resources checked {}'.format(count))
 
-        # print path to all subdirectories first.
-        # for subdirname in dirnames:
-        #     print(os.path.join(dirname, subdirname))
+    if len(resultDictionary) == count:
+        print('Resource check on GCP bucket OK')
+    else:
+        print('There are errors in migration')
 
-        for filename in filenames:
-            resource_id[filename] = dirname[-7:-4] + dirname[-3:] + filename
-            index += 1
 
-            print(index, resource_id[filename])
-            # path to all filenames with filenames
-            # print(os.path.join(dirname, filename))
-
-    print('Number of total resources in storage is {}'.format(len(resource_id)))
-    result = model.Session.execute("select id from resource where state = 'active' and url_type = 'upload'")
-    for v in result:
-        for column, value in v.items():
-            print('{0}: {1}'.format(column, value))
 
 
 def resource_download(id, resource_id, filename=None):
