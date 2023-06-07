@@ -20,17 +20,27 @@ def fix_cors(domains):
 
 
 @cloudstorage.command()
-@click.argument("path")
-@click.argument("resource", required=False)
-def migrate(path, resource):
+def migrate():
     """Upload local storage to the remote."""
-    utils.migrate(path, resource)
+    utils.migrate()
 
 
 @cloudstorage.command("assets-to-gcp")
 def assets_to_gcp():
     """Upload assets from local storage to GCP."""
     utils.assets_to_gcp()
+
+
+@cloudstorage.command("check-resources")
+def check_resources():
+    """Check resources in storage and in GCP bucket"""
+    utils.check_resources()
+
+
+@cloudstorage.command("resource-exists")
+def resource_exists_check():
+    """Check if resources exists on localstorage"""
+    utils.resource_exists_check()
 
 
 def get_commands():

@@ -3,7 +3,7 @@ from __future__ import annotations
 import mimetypes
 
 import os.path
-import tempfile
+from pathlib import Path
 
 from google.cloud import storage
 
@@ -11,11 +11,16 @@ import ckan.lib.helpers as h
 import ckan.plugins.toolkit as tk
 from ckan import model
 from ckan.lib import base, uploader
-from ckanapi import LocalCKAN
 from ckantoolkit import config
-from werkzeug.datastructures import FileStorage as FakeFileStorage
 
-from ckanext.cloudstorage.storage import CloudStorage, ResourceCloudStorage
+# Setup for GCP
+storage_path = config.get('ckan.storage_path',
+                          '/var/lib/ckan/default/resources')
+path_to_json = config.get(
+    'ckanext.cloudstorage.google_service_account_json')
+bucket_name = config.get('ckanext.cloudstorage.container_name')
+storage_client = storage.Client.from_service_account_json(path_to_json)
+bucket = storage_client.bucket(bucket_name)
 
 
 def fix_cors(domains):
@@ -42,91 +47,57 @@ def fix_cors(domains):
         )
 
 
-def migrate(path, single_id):
-    if not os.path.isdir(path):
-        print("The storage directory cannot be found.")
-        return
+def migrate():
 
-    lc = LocalCKAN()
-    resources = {}
-    failed: list[str] = []
+    # the resources file structure on the bucket on this extension is like
+    # resources/{resource_id}/{filename from databse}
+    # it is not coping the directory structure on CKAN storage
 
-    # The resource folder is stuctured like so on disk:
-    # - storage/
-    #   - ...
-    # - resources/
-    #   - <3 letter prefix>
-    #     - <3 letter prefix>
-    #       - <remaining resource_id as filename>
-    #       ...
-    #     ...
-    #   ...
-    for root, dirs, files in os.walk(path):
-        # Only the bottom level of the tree actually contains any files. We
-        # don't care at all about the overall structure.
-        if not files:
-            continue
+    resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
+    resource_ids_and_paths = dict((x, y) for x, y in resource_id_url)
+ 
+    resource_id = {}
+    migrated_index = 0
+    not_migrated_index = 0
+    storage_resource = storage_path + "/resources"
+ 
+    for dirname, dirnames, filenames in os.walk(storage_resource):
+        
+        for filename in filenames:
+            resource_id[filename] = dirname[-7:-4] + dirname[-3:] + filename
+            if resource_id[filename] in resource_ids_and_paths:
+                # path of the file on localstorage
+                local_path = os.path.join(dirname, filename)
 
-        split_root = root.split("/")
-        resource_id = split_root[-2] + split_root[-1]
+                # file name of the resource from database
+                resource_name = resource_ids_and_paths[resource_id[filename]]
 
-        for file_ in files:
-            ckan_res_id = resource_id + file_
-            if single_id and ckan_res_id != single_id:
-                continue
+                # resource id from database
+                r_id = resource_id[filename]
 
-            resources[ckan_res_id] = os.path.join(root, file_)
+                blob = bucket.blob('resources/{resource_id}/{file_name}'.
+                                   format(resource_id=r_id,
+                                          file_name=resource_name))
+                try:
+                    blob.upload_from_filename(local_path)
+                    migrated_index += 1
+                    print(resource_id[filename], 'is migrated to S3 bucket')
 
-    for i, resource in enumerate(iter(list(resources.items())), 1):
-        resource_id, file_path = resource
-        print(
-            "[{i}/{count}] Working on {id}".format(
-                i=i, count=len(resources), id=resource_id
-            )
-        )
-        try:
-            if resource_id:
-                resource = lc.action.resource_show(id=resource_id) 
+                except Exception as e:
+                    print(e)
+                    print(resource_id[filename], 'is not migrated ')
+                    not_migrated_index += 1
+                    
             else:
-                print("Resource skiped has no id in database")
-                continue
-        except tk.ObjectNotFound:
-            print("\tResource not found")
-            continue
-        if resource["url_type"] != "upload":
-            print("\t`url_type` is not `upload`. Skip")
-            continue
+                print(resource_id[filename], 'missing id in database - will not be migrated')
+                not_migrated_index += 1
 
-        with open(file_path, "rb") as fin:
-            resource["upload"] = FakeFileStorage(
-                fin, resource["url"].split("/")[-1]
-            )
-            try:
-                uploader = ResourceCloudStorage(resource)
-                uploader.upload(resource["id"])
-            except Exception as e:
-                failed.append(resource_id)
-                print(
-                    "\tError of type {0} during upload: {1}".format(type(e), e)
-                )
-
-    if failed:
-        log_file = tempfile.NamedTemporaryFile(delete=False)
-        log_file.file.writelines([l.encode() for l in failed])
-        print(
-            "ID of all failed uploads are saved to `{0}`: {1}".format(
-                log_file.name, failed
-            )
-        )
+    print('Number of total resources migrated is {}'.format(migrated_index))
+    print('Number of total resources not migrated is {}'.format(not_migrated_index))
+    print('Number of total resources in storage is {}'.format(len(resource_id)))
 
 
 def assets_to_gcp():
-
-    storage_path = config.get('ckan.storage_path',
-                              '/var/lib/ckan/default/resources')
-    path_to_json = config.get(
-        'ckanext.cloudstorage.google_service_account_json')
-    bucket_name = config.get('ckanext.cloudstorage.container_name')
 
     group_ids_and_paths = {}
     for root, dirs, files in os.walk(storage_path):
@@ -137,13 +108,56 @@ def assets_to_gcp():
 
     print('{0} group assets found in the database'.format(
         len(group_ids_and_paths.keys())))
-    storage_client = storage.Client.from_service_account_json(path_to_json)
-    bucket = storage_client.bucket(bucket_name)
     for resource_id, file_name in group_ids_and_paths.items():
         blob = bucket.blob('storage/uploads/group/{resource_id}'.
                            format(resource_id=resource_id))
         blob.upload_from_filename(file_name)
         print('{file_name} was uploaded'.format(file_name=file_name))
+        
+    
+def check_resources():
+
+    resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
+    resultDictionary = dict((x, y) for x, y in resource_id_url)
+    print('Number of total active resources in database is {}'.format(
+                                                len(resultDictionary)))
+    blobs = storage_client.list_blobs(bucket_name)
+    count = 0
+    for blob in blobs:
+        gcp_resource_id = blob.name[10:46]
+        if gcp_resource_id in resultDictionary:
+            count += 1
+            print(blob.name, "has id in database")
+        else:
+            count += 1
+            print(blob.name, "has no id in database and will be deleted")
+            # blob.delete()
+            print(blob.name, "is deleted")
+
+    print('Number of active resources checked {}'.format(count))
+
+    if len(resultDictionary) == count:
+        print('Resource check on GCP bucket OK')
+    else:
+        print('There are errors in migration')
+
+
+def resource_exists_check():
+    
+    resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
+    resultDictionary = dict((x, y) for x, y in resource_id_url)
+    print('Number of total active resources in database is {}'.format(
+                                                len(resultDictionary)))
+    for resource_id in resultDictionary:
+
+        path_to_resource = storage_path + "/resources" + "/" + resource_id[0:3] + "/" + resource_id[3:6] + "/" + resource_id[6:]
+        my_file = Path(path_to_resource)   
+        if my_file.is_file():
+            continue
+            # print("resource exists on local storage")
+        else:
+            print(path_to_resource)
+            print("resource is missing")
 
 
 def resource_download(id, resource_id, filename=None):
