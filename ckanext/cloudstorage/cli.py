@@ -37,5 +37,11 @@ def check_resources():
     utils.check_resources()
 
 
+@cloudstorage.command("resource-exists")
+def resource_exists_check():
+    """Check if resources exists on localstorage"""
+    utils.resource_exists_check()
+
+
 def get_commands():
     return [cloudstorage]

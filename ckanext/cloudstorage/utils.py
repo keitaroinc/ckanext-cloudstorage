@@ -3,6 +3,7 @@ from __future__ import annotations
 import mimetypes
 
 import os.path
+from pathlib import Path
 
 from google.cloud import storage
 
@@ -141,6 +142,22 @@ def check_resources():
         print('There are errors in migration')
 
 
+def resource_exists_check():
+    
+    resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
+    resultDictionary = dict((x, y) for x, y in resource_id_url)
+    print('Number of total active resources in database is {}'.format(
+                                                len(resultDictionary)))
+    for resource_id in resultDictionary:
+
+        path_to_resource = storage_path + "/resources" + "/" + resource_id[0:3] + "/" + resource_id[3:6] + "/" + resource_id[6:]
+        my_file = Path(path_to_resource)   
+        if my_file.is_file():
+            continue
+            # print("resource exists on local storage")
+        else:
+            print(path_to_resource)
+            print("resource is missing")
 
 
 def resource_download(id, resource_id, filename=None):
