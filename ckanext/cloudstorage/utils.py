@@ -11,7 +11,8 @@ import ckan.lib.helpers as h
 import ckan.plugins.toolkit as tk
 from ckan import model
 from ckan.lib import base, uploader
-from ckantoolkit import config
+# from ckantoolkit import config
+from ckan.common import config
 
 # Setup for GCP
 storage_path = config.get('ckan.storage_path',
