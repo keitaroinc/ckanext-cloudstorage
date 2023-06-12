@@ -20,12 +20,7 @@ logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-fh = logging.FileHandler(r'migration.log', 'w+')
-logger.addHandler(fh)
-fh.setFormatter(formatter)
-fh.setLevel(logging.DEBUG)
 ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 def fix_cors(domains):
@@ -53,7 +48,13 @@ def fix_cors(domains):
 
 
 def migrate():
-    # Setup for GCP
+    # Setup for GCP for migrating resources on bucket
+
+    fh = logging.FileHandler(r'migration.log', 'w+')
+    logger.addHandler(fh)
+    fh.setFormatter(formatter)
+    fh.setLevel(logging.DEBUG)
+    
     storage_path = config.get('ckan.storage_path',
                             '/var/lib/ckan/default/resources')
     path_to_json = config.get(
@@ -138,6 +139,13 @@ def assets_to_gcp():
     
 def check_resources():
     # Setup for GCP
+    # checks if every resource on bucket has resource id in base
+    # if not deletes the resource from the bucket
+
+    fh = logging.FileHandler(r'resource_check.log', 'w+')
+    logger.addHandler(fh)
+    fh.setFormatter(formatter)
+    fh.setLevel(logging.DEBUG)
 
     path_to_json = config.get(
         'ckanext.cloudstorage.google_service_account_json')
@@ -146,31 +154,38 @@ def check_resources():
 
     resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
     resultDictionary = dict((x, y) for x, y in resource_id_url)
-    print('Number of total active resources in database is {}'.format(
-                                                len(resultDictionary)))
+    logger.info(f'Number of total active resources in database is {len(resultDictionary)}')
     blobs = storage_client.list_blobs(bucket_name)
     count = 0
     for blob in blobs:
         gcp_resource_id = blob.name[10:46]
         if gcp_resource_id in resultDictionary:
             count += 1
-            print(blob.name, "has id in database")
+            logger.info(f'{blob.name} has id in database')
         else:
             count += 1
-            print(blob.name, "has no id in database and will be deleted")
+            logger.warn(f'{blob.name} has no id in database and will be deleted')
             # blob.delete()
-            print(blob.name, "is deleted")
+            logger.warn(f'{blob.name} is deleted')
 
-    print('Number of active resources checked {}'.format(count))
+    logger.info(f'Number of active resources checked {count}')
 
     if len(resultDictionary) == count:
-        print('Resource check on GCP bucket OK')
+        logger.info('Resource check on GCP bucket OK')
     else:
-        print('There are errors in migration')
+        logger.warn('There are errors in migration')
 
 
 def resource_exists_check():
     # Setup for GCP
+    # Checks for all resources by id from databese
+    # exists resource file in storage
+
+    fh = logging.FileHandler(r'resource_exists.log', 'w+')
+    logger.addHandler(fh)
+    fh.setFormatter(formatter)
+    fh.setLevel(logging.DEBUG)
+
     storage_path = config.get('ckan.storage_path',
                             '/var/lib/ckan/default/resources')
     path_to_json = config.get(
@@ -181,18 +196,16 @@ def resource_exists_check():
     
     resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
     resultDictionary = dict((x, y) for x, y in resource_id_url)
-    print('Number of total active resources in database is {}'.format(
-                                                len(resultDictionary)))
+    logger.info(f'Number of total active resources in database is {len(resultDictionary)}')
     for resource_id in resultDictionary:
 
         path_to_resource = storage_path + "/resources" + "/" + resource_id[0:3] + "/" + resource_id[3:6] + "/" + resource_id[6:]
         my_file = Path(path_to_resource)   
         if my_file.is_file():
             continue
-            # print("resource exists on local storage")
+            # logger.info("resource exists on local storage")
         else:
-            print(path_to_resource)
-            print("resource is missing")
+            logger.warn(f'{path_to_resource} is missing')
 
 
 def resource_download(id, resource_id, filename=None):
