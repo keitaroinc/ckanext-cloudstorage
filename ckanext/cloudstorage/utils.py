@@ -92,15 +92,20 @@ def migrate():
                 blob = bucket.blob('resources/{resource_id}/{file_name}'.
                                    format(resource_id=r_id,
                                           file_name=resource_name))
-                try:
-                    blob.upload_from_filename(local_path)
+                
+                if blob.exists():
+                    logger.info(f'{resource_id[filename]}, allready exists in bucket')
                     migrated_index += 1
-                    logger.info(f'{resource_id[filename]}, is migrated to S3 bucket')
+                else:
+                    try:
+                        blob.upload_from_filename(local_path)
+                        migrated_index += 1
+                        logger.info(f'{resource_id[filename]}, is migrated to S3 bucket')
 
-                except Exception as e:
-                    print(e)
-                    logger.error(f'{resource_id[filename]}, is not migrated')
-                    not_migrated_index += 1
+                    except Exception as e:
+                        print(e)
+                        logger.error(f'{resource_id[filename]}, is not migrated')
+                        not_migrated_index += 1
                     
             else:
                 logger.info(f'{resource_id[filename]}, missing id in database - will not be migrated')
