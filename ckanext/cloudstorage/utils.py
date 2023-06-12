@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 import mimetypes
+import logging
 
 import os.path
 from pathlib import Path
@@ -11,8 +12,20 @@ import ckan.lib.helpers as h
 import ckan.plugins.toolkit as tk
 from ckan import model
 from ckan.lib import base, uploader
-# from ckantoolkit import config
 from ckan.common import config
+
+# create logger
+logger = logging.getLogger("Migration_log")
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+fh = logging.FileHandler(r'migration.log', 'w+')
+logger.addHandler(fh)
+fh.setFormatter(formatter)
+fh.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 
 def fix_cors(domains):
@@ -81,20 +94,20 @@ def migrate():
                 try:
                     blob.upload_from_filename(local_path)
                     migrated_index += 1
-                    print(resource_id[filename], 'is migrated to S3 bucket')
+                    logger.info(f'{resource_id[filename]}, is migrated to S3 bucket')
 
                 except Exception as e:
                     print(e)
-                    print(resource_id[filename], 'is not migrated ')
+                    logger.error(f'{resource_id[filename]}, is not migrated')
                     not_migrated_index += 1
                     
             else:
-                print(resource_id[filename], 'missing id in database - will not be migrated')
+                logger.info(f'{resource_id[filename]}, missing id in database - will not be migrated')
                 not_migrated_index += 1
 
-    print('Number of total resources migrated is {}'.format(migrated_index))
-    print('Number of total resources not migrated is {}'.format(not_migrated_index))
-    print('Number of total resources in storage is {}'.format(len(resource_id)))
+    logger.info(f'Number of total resources migrated is {migrated_index}')
+    logger.info(f'Number of total resources not migrated is {not_migrated_index}')
+    logger.info(f'Number of total resources in storage is {len(resource_id)}')
 
 
 def assets_to_gcp():
