@@ -14,15 +14,6 @@ from ckan.lib import base, uploader
 # from ckantoolkit import config
 from ckan.common import config
 
-# Setup for GCP
-storage_path = config.get('ckan.storage_path',
-                          '/var/lib/ckan/default/resources')
-path_to_json = config.get(
-    'ckanext.cloudstorage.google_service_account_json')
-bucket_name = config.get('ckanext.cloudstorage.container_name')
-storage_client = storage.Client.from_service_account_json(path_to_json)
-bucket = storage_client.bucket(bucket_name)
-
 
 def fix_cors(domains):
     cs = CloudStorage()
@@ -49,6 +40,14 @@ def fix_cors(domains):
 
 
 def migrate():
+    # Setup for GCP
+    storage_path = config.get('ckan.storage_path',
+                            '/var/lib/ckan/default/resources')
+    path_to_json = config.get(
+        'ckanext.cloudstorage.google_service_account_json')
+    bucket_name = config.get('ckanext.cloudstorage.container_name')
+    storage_client = storage.Client.from_service_account_json(path_to_json)
+    bucket = storage_client.bucket(bucket_name)
 
     # the resources file structure on the bucket on this extension is like
     # resources/{resource_id}/{filename from databse}
@@ -99,6 +98,14 @@ def migrate():
 
 
 def assets_to_gcp():
+    # Setup for GCP
+    storage_path = config.get('ckan.storage_path',
+                            '/var/lib/ckan/default/resources')
+    path_to_json = config.get(
+        'ckanext.cloudstorage.google_service_account_json')
+    bucket_name = config.get('ckanext.cloudstorage.container_name')
+    storage_client = storage.Client.from_service_account_json(path_to_json)
+    bucket = storage_client.bucket(bucket_name)
 
     group_ids_and_paths = {}
     for root, dirs, files in os.walk(storage_path):
@@ -117,6 +124,12 @@ def assets_to_gcp():
         
     
 def check_resources():
+    # Setup for GCP
+
+    path_to_json = config.get(
+        'ckanext.cloudstorage.google_service_account_json')
+    bucket_name = config.get('ckanext.cloudstorage.container_name')
+    storage_client = storage.Client.from_service_account_json(path_to_json)
 
     resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
     resultDictionary = dict((x, y) for x, y in resource_id_url)
@@ -144,6 +157,14 @@ def check_resources():
 
 
 def resource_exists_check():
+    # Setup for GCP
+    storage_path = config.get('ckan.storage_path',
+                            '/var/lib/ckan/default/resources')
+    path_to_json = config.get(
+        'ckanext.cloudstorage.google_service_account_json')
+    bucket_name = config.get('ckanext.cloudstorage.container_name')
+    storage_client = storage.Client.from_service_account_json(path_to_json)
+    bucket = storage_client.bucket(bucket_name)
     
     resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
     resultDictionary = dict((x, y) for x, y in resource_id_url)
