@@ -198,6 +198,7 @@ def resource_exists_check():
     bucket_name = config.get('ckanext.cloudstorage.container_name')
     storage_client = storage.Client.from_service_account_json(path_to_json)
     bucket = storage_client.bucket(bucket_name)
+    count = 0
     
     resource_id_url = model.Session.execute("select id, url from resource where state = 'active' and url_type = 'upload'")
     resultDictionary = dict((x, y) for x, y in resource_id_url)
@@ -210,7 +211,10 @@ def resource_exists_check():
             continue
             # logger.info("resource exists on local storage")
         else:
+            count += 1
             logger.warn(f'{path_to_resource} is missing')
+    if count == 0:
+        logger.info("No resource is missing in filestore")
 
 
 def resource_download(id, resource_id, filename=None):
