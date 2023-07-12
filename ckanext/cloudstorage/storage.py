@@ -242,7 +242,6 @@ class ResourceCloudStorage(CloudStorage):
         upload_field_storage = resource.pop("upload", None)
         self._clear = resource.pop("clear_upload", None)
         multipart_name = resource.pop("multipart_name", None)
-
         # Check to see if a file has been provided
         if (
             isinstance(upload_field_storage, (ALLOWED_UPLOAD_TYPES))
@@ -251,6 +250,10 @@ class ResourceCloudStorage(CloudStorage):
             self.filename = munge.munge_filename(upload_field_storage.filename)
             self.file_upload = _get_underlying_file(upload_field_storage)
             resource["url"] = self.filename
+            temp_resource = _get_underlying_file(upload_field_storage)
+            temp_resource_len = len(temp_resource.read())
+            resource["size"] = temp_resource_len
+            temp_resource.seek(0)
             resource["url_type"] = "upload"
             resource["last_modified"] = datetime.utcnow()
         elif multipart_name and self.can_use_advanced_aws:
@@ -329,7 +332,6 @@ class ResourceCloudStorage(CloudStorage):
                             self.file_upload.seek(0, os.SEEK_END)
                             file_size = self.file_upload.tell()
                             self.file_upload.seek(0, os.SEEK_SET)
-
                         log.debug(
                             "\t - File size %s: %s", self.filename, file_size
                         )
