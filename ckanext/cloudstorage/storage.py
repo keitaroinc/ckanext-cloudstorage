@@ -19,6 +19,7 @@ from ckan.lib import munge
 from libcloud.storage.providers import get_driver
 from libcloud.storage.types import ObjectDoesNotExistError, Provider
 from werkzeug.datastructures import FileStorage as FlaskFileStorage
+from google.cloud import storage
 
 import collections
 import sys
@@ -384,22 +385,32 @@ class ResourceCloudStorage(CloudStorage):
                     # over lines, not over chunks and it will really
                     # slow down the process for files that consist of
                     # millions of short linew
-                    if isinstance(file_upload, tempfile.SpooledTemporaryFile):
-                        file_upload.rollover()
-                        try:
-                            # extract underlying file
-                            file_upload_iter = file_upload._file.detach()
-                        except AttributeError:
-                            # It's python2
-                            file_upload_iter = file_upload._file
-                    else:
-                        file_upload_iter = iter(file_upload)
-                    self.container.upload_object_via_stream(
-                        iterator=file_upload_iter, object_name=object_name
-                    )
+                    # if isinstance(file_upload, tempfile.SpooledTemporaryFile):
+                    #     file_upload.rollover()
+                    #     try:
+                    #         # extract underlying file
+                    #         file_upload_iter = file_upload._file.detach()
+                    #     except AttributeError:
+                    #         # It's python2
+                    #         file_upload_iter = file_upload._file
+                    # else:
+                    #     file_upload_iter = iter(file_upload)
+                    # self.container.upload_object_via_stream(
+                    #     iterator=file_upload_iter, object_name=object_name
+                    # )
+                    # log.debug(
+                    #     "\t => UPLOADED %s: %s", self.filename, object_name
+                    # )
+                    path_to_json = config.get(
+                        'ckanext.cloudstorage.google_service_account_json')
+                    bucket_name = config.get('ckanext.cloudstorage.container_name')
+                    storage_client = storage.Client.from_service_account_json(path_to_json)
+                    bucket = storage_client.bucket(bucket_name)
+                    blob = bucket.blob(object_name)
+                    blob.upload_from_file(file_upload)
                     log.debug(
-                        "\t => UPLOADED %s: %s", self.filename, object_name
-                    )
+                         "\t => UPLOADED %s: %s", self.filename, object_name
+                     )
                 except (ValueError, types.InvalidCredsError) as err:
                     log.error(traceback.format_exc())
                     raise err
