@@ -256,6 +256,8 @@ class ResourceCloudStorage(CloudStorage):
             resource["size"] = temp_resource_len
             temp_resource.seek(0)
             resource["url_type"] = "upload"
+            resource['mimetype'] = upload_field_storage.mimetype
+            resource["format"] = os.path.splitext(upload_field_storage.filename)[1][1:]
             resource["last_modified"] = datetime.utcnow()
         elif multipart_name and self.can_use_advanced_aws:
             # This means that file was successfully uploaded and stored
