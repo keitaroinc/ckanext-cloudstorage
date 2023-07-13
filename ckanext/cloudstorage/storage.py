@@ -257,6 +257,7 @@ class ResourceCloudStorage(CloudStorage):
             temp_resource.seek(0)
             resource["url_type"] = "upload"
             resource['mimetype'] = upload_field_storage.mimetype
+            # if file format should be added automaticly uncomment the line
             # resource["format"] = os.path.splitext(upload_field_storage.filename)[1][1:]
             resource["last_modified"] = datetime.utcnow()
         elif multipart_name and self.can_use_advanced_aws:
