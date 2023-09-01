@@ -132,6 +132,7 @@ def assets_to_gcp():
             for idx, group_file in enumerate(files):
                 group_ids_and_paths[group_file] = os.path.join(
                     root, files[idx])
+                print(group_ids_and_paths)
 
     print('{0} group assets found in the database'.format(
         len(group_ids_and_paths.keys())))

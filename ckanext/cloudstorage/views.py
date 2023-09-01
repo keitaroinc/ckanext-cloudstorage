@@ -3,19 +3,48 @@
 from flask import Blueprint
 import ckanext.cloudstorage.utils as utils
 import ckantoolkit as toolkit
+import ckan.plugins.toolkit as tk
 from  ckan.lib import uploader
+from google.cloud import storage
 
 redirect = toolkit.redirect_to
+
+import logging
+log = logging.getLogger(__name__)
 
 cloudstorage = Blueprint("cloudstorage", __name__)
 s3_uploads = Blueprint(u's3_uploads', __name__)
 
+bucket_name = toolkit.config.get("ckanext.cloudstorage.container_name")
+
 
 @cloudstorage.route("/uploads/<upload_to>/<filename>", methods = ['POST', 'GET'])
 def uploaded_file_redirect(upload_to, filename):
-    '''Redirect static file requests to their location on S3 bucket.'''
+    '''Redirect static file requests to their location on goodle storage container.'''
 
-    return redirect('uploads/group/2023-08-24-134503.211626depeche-mode.png')
+    path = toolkit.config.get('ckanext.s3filestore.aws_storage_path', '')
+
+    org = tk.get_action('organization_show')()
+    log.info(org)
+
+    log.info("----------------------------------")
+    log.info(path)
+    log.info("----------------------------------")
+    file_name = "2023-08-24-134503.211626depeche-mode.png"
+
+    bucket_name = toolkit.config.get('ckanext.cloudstorage.container_name')
+    client = storage.Client.from_service_account_json(toolkit.config.get('ckanext.cloudstorage.google_service_account_json'))
+    blobs = client.list_blobs(bucket_name)
+
+    for blob in blobs:
+        if file_name in blob.name:
+            asset_signed_url = blob.generate_signed_url(
+            version='v4',
+            expiration=604800,
+            method='GET')
+            break
+
+    return redirect(f"{asset_signed_url}")
 
 
 
