@@ -24,8 +24,8 @@ def uploaded_file_redirect(upload_to, filename):
 
     path = toolkit.config.get('ckanext.s3filestore.aws_storage_path', '')
 
-    org = tk.get_action('organization_show')()
-    log.info(org)
+    #org = tk.get_action('organization_show')()
+    #log.info(org)
 
     log.info("----------------------------------")
     log.info(path)
