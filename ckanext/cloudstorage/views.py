@@ -22,30 +22,56 @@ bucket_name = toolkit.config.get("ckanext.cloudstorage.container_name")
 def uploaded_file_redirect(upload_to, filename):
     '''Redirect static file requests to their location on goodle storage container.'''
 
-    path = toolkit.config.get('ckanext.s3filestore.aws_storage_path', '')
+    context = {'ignore_auth': True}
 
-    #org = tk.get_action('organization_show')()
-    #log.info(org)
+    user = tk.get_action('get_site_user')(context, {})
+    user_name = user['name']
 
-    log.info("----------------------------------")
-    log.info(path)
-    log.info("----------------------------------")
-    file_name = "2023-08-24-134503.211626depeche-mode.png"
+    
+    groups = tk.get_action('group_list')(context, {'username': user_name})
+    
+    for group in groups:
+        if 'http' not in filename: # excludes linkes, since they are already online.
 
-    bucket_name = toolkit.config.get('ckanext.cloudstorage.container_name')
-    client = storage.Client.from_service_account_json(toolkit.config.get('ckanext.cloudstorage.google_service_account_json'))
-    blobs = client.list_blobs(bucket_name)
+            bucket_name = toolkit.config.get('ckanext.cloudstorage.container_name')
+            client = storage.Client.from_service_account_json(toolkit.config.get('ckanext.cloudstorage.google_service_account_json'))
+            
+            blobs = client.list_blobs(bucket_name) #TODO(milosh) list_blobs is a slow iteration find a gcp blop.function() that will instantly point to the blob we need!
+            for blob in blobs:    
+                if filename in blob.name:
+                    asset_signed_url = blob.generate_signed_url(
+                    version='v4',
+                    expiration=604800,
+                    method='GET')
 
-    for blob in blobs:
-        if file_name in blob.name:
-            asset_signed_url = blob.generate_signed_url(
-            version='v4',
-            expiration=604800,
-            method='GET')
-            break
+        try:
+            return redirect(asset_signed_url)
+        except UnboundLocalError:
+            msg = log.error("----------One or more assets not uploaded to Cloud Platform, please upload it. ------------")
+            return str(msg)
 
-    return redirect(f"{asset_signed_url}")
 
+    organizations = tk.get_action('organization_list_for_user')(context, {'id':user_name})
+    for organization in organizations:
+        if 'http' not in filename:  # excludes link because we only need actual files from storage.
+
+            client = storage.Client.from_service_account_json(toolkit.config.get('ckanext.cloudstorage.google_service_account_json'))
+            
+            blobs = client.list_blobs(bucket_name) #TODO(milosh) list_blobs is a slow iteration find a gcp blop.function() that will instantly point to the blob we need!
+            for blob in blobs:    
+                if filename in blob.name:
+                    asset_signed_url = blob.generate_signed_url(
+                    version='v4',
+                    expiration=604800,
+                    method='GET')
+                    organizations.remove(organization)
+                    log.info("----- this is the organizaiton list!")
+                    log.info(organizations)
+        try:
+            return redirect(asset_signed_url)
+        except UnboundLocalError:
+            msg = log.error("----------One or more assets not uploaded to Cloud Platform, please upload it ------------")
+            return str(msg)
 
 
 @cloudstorage.route("/dataset/<id>/resource/<resource_id>/download")
