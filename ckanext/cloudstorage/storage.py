@@ -16,6 +16,7 @@ import ckan.plugins as p
 import libcloud.common.types as types
 from ckan import model
 from ckan.lib import munge
+from ckan.lib.uploader import Upload
 from libcloud.storage.providers import get_driver
 from libcloud.storage.types import ObjectDoesNotExistError, Provider
 from werkzeug.datastructures import FileStorage as FlaskFileStorage
@@ -23,6 +24,7 @@ from google.cloud import storage
 
 import collections
 import sys
+import ckan.logic as logic
 
 # google-auth
 from google.oauth2 import service_account
@@ -637,4 +639,51 @@ class ResourceCloudStorage(CloudStorage):
     def package(self):
         return model.Package.get(self.resource["package_id"])
 
+#delete this function after upload to cloud implementation
+def _copy_file(input_file, output_file, max_size):
+    input_file.seek(0)
+    current_size = 0
+    while True:
+        current_size = current_size + 1
+        # MB chunks
+        MB = 1024*1024 
+        data = input_file.read(MB)
+
+        if not data:
+            break
+        output_file.write(data)
+        if current_size > max_size:
+            raise logic.ValidationError({'upload': ['File upload too large']})
+
+class ItemCloudStorage(Upload):
+    
+    def upload(self, id, max_size=10):
+        storage_path = config.get('ckan.storage_path',
+                            '/var/lib/ckan/default/resources')
+        path_to_json = config.get(
+        'ckanext.cloudstorage.google_service_account_json')
+        bucket_name = config.get('ckanext.cloudstorage.container_name')
+        storage_client = storage.Client.from_service_account_json(path_to_json)
+        bucket = storage_client.bucket(bucket_name)
+        self.verify_type()
+        breakpoint()
+        if self.filename:
+            with open(self.tmp_filepath, 'wb+') as output_file:
+                try:
+                    _copy_file(self.upload_file, output_file, max_size)
+                except logic.ValidationError:
+                    os.remove(self.tmp_filepath)
+                    raise
+                finally:
+                    # breakpoint()
+                    self.upload_file.close()
+            os.rename(self.tmp_filepath, self.filepath)
+            self.clear = True
+
+        if (self.clear and self.old_filename
+                and not self.old_filename.startswith('http')):
+            try:
+                os.remove(self.old_filepath)
+            except OSError:
+                pass
 

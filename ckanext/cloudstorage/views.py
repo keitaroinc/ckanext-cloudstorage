@@ -3,8 +3,10 @@
 from flask import Blueprint
 
 import ckanext.cloudstorage.utils as utils
+from ckanext.cloudstorage.storage import ItemCloudStorage
 
 cloudstorage = Blueprint("cloudstorage", __name__)
+s3_uploads = Blueprint("s3_uploads",__name__)
 
 
 @cloudstorage.route("/dataset/<id>/resource/<resource_id>/download")

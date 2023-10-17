@@ -62,7 +62,7 @@ class CloudStoragePlugin(MixinPlugin, plugins.SingletonPlugin):
     def get_uploader(self, upload_to, old_filename=None):
         # We don't provide misc-file storage (group images for example)
         # Returning None here will use the default Uploader.
-        return None
+        return storage.ItemCloudStorage(upload_to,old_filename)
 
     # IActions
 
