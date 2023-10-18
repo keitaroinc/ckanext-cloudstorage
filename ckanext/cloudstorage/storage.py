@@ -6,6 +6,7 @@ import hashlib
 import logging
 import mimetypes
 import os
+from tempfile import NamedTemporaryFile
 import tempfile
 import traceback
 from ast import literal_eval
@@ -406,6 +407,7 @@ class ResourceCloudStorage(CloudStorage):
                     # log.debug(
                     #     "\t => UPLOADED %s: %s", self.filename, object_name
                     # )
+                    
                     path_to_json = config.get(
                         'ckanext.cloudstorage.google_service_account_json')
                     bucket_name = config.get('ckanext.cloudstorage.container_name')
@@ -413,6 +415,7 @@ class ResourceCloudStorage(CloudStorage):
                     bucket = storage_client.bucket(bucket_name)
                     blob = bucket.blob(object_name)
                     blob.upload_from_file(file_upload)
+            
                     log.debug(
                          "\t => UPLOADED %s: %s", self.filename, object_name
                      )
@@ -666,24 +669,13 @@ class ItemCloudStorage(Upload):
         storage_client = storage.Client.from_service_account_json(path_to_json)
         bucket = storage_client.bucket(bucket_name)
         self.verify_type()
-        breakpoint()
+        self.upload_file.seek(0, os.SEEK_SET)
         if self.filename:
-            with open(self.tmp_filepath, 'wb+') as output_file:
-                try:
-                    _copy_file(self.upload_file, output_file, max_size)
-                except logic.ValidationError:
-                    os.remove(self.tmp_filepath)
-                    raise
-                finally:
-                    # breakpoint()
-                    self.upload_file.close()
-            os.rename(self.tmp_filepath, self.filepath)
-            self.clear = True
-
-        if (self.clear and self.old_filename
-                and not self.old_filename.startswith('http')):
+            upload_file = self.upload_file
+            blob = bucket.blob(self.filepath)
+            file_as_bytes = upload_file.read()
             try:
-                os.remove(self.old_filepath)
-            except OSError:
+                blob.upload_from_string(file_as_bytes)
+            except:
                 pass
 
