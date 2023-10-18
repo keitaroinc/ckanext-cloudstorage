@@ -670,9 +670,13 @@ class ItemCloudStorage(Upload):
         bucket = storage_client.bucket(bucket_name)
         self.verify_type()
         self.upload_file.seek(0, os.SEEK_SET)
+        key = self.filepath
+        if storage_path in key:
+            key = key.replace(storage_path, '', 1)
+            key = key[1:] # remove the first "/""
         if self.filename:
             upload_file = self.upload_file
-            blob = bucket.blob(self.filepath)
+            blob = bucket.blob(key)
             file_as_bytes = upload_file.read()
             try:
                 blob.upload_from_string(file_as_bytes)
