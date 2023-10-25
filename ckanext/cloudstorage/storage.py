@@ -673,7 +673,7 @@ class ItemCloudStorage(Upload):
         key = self.filepath
         if storage_path in key:
             key = key.replace(storage_path, '', 1)
-            key = key[1:] # remove the first "/""
+            key = key[1:] # remove the first "/"
         if self.filename:
             upload_file = self.upload_file
             blob = bucket.blob(key)
