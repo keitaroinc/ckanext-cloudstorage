@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import ckan.plugins.toolkit as tk
 
+
 from ckanext.cloudstorage.storage import ResourceCloudStorage
 
 
@@ -22,3 +23,4 @@ def use_multipart_upload():
 
 def max_upload_size():
     return tk.config.get("ckanext.cloudstorage.max_upload_size_gb")
+
