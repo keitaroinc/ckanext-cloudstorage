@@ -128,16 +128,21 @@ def assets_to_gcp():
 
     group_ids_and_paths = {}
     for root, dirs, files in os.walk(storage_path):
-        if root[-5:] == 'group':
+        if "storage/uploads" in root:
             for idx, group_file in enumerate(files):
+
                 group_ids_and_paths[group_file] = os.path.join(
                     root, files[idx])
 
     print('{0} group assets found in the database'.format(
         len(group_ids_and_paths.keys())))
-    for resource_id, file_name in group_ids_and_paths.items():
-        blob = bucket.blob('storage/uploads/group/{resource_id}'.
-                           format(resource_id=resource_id))
+
+    for file_path, file_name in group_ids_and_paths.items():
+
+        s3_file_path = file_name
+        if storage_path in file_name:
+            s3_file_path = s3_file_path.replace(storage_path, "")
+        blob = bucket.blob(s3_file_path)
         blob.upload_from_filename(file_name)
         print('{file_name} was uploaded'.format(file_name=file_name))
         
