@@ -1,7 +1,6 @@
 # ckanext-cloudstorage
 
-Implements support for using S3, Azure, or any of 15 different storage
-providers supported by [libcloud][] to [CKAN][].
+Implements support for using S3 on Google Cloud Platform
 
 # Setup
 
@@ -17,7 +16,7 @@ Every driver takes two options, regardless of which one you use. Both
 the name of the driver and the name of the container/bucket are
 case-sensitive:
 
-    ckanext.cloudstorage.driver = AZURE_BLOBS
+    ckanext.cloudstorage.driver = GOOGLE_STORAGE
     ckanext.cloudstorage.container_name = demo
 
 You can find a list of driver names [here][storage] (see the `Provider
@@ -31,14 +30,13 @@ For most drivers, this is all you need:
 
 # Support
 
-Most libcloud-based providers should work out of the box, but only those listed
-below have been tested:
+This branch supports only Google Cloud Platform
 
 | Provider | Uploads | Downloads | Secure URLs (private resources) |
 | --- | --- | --- | --- |
-| Azure    | YES | YES | YES (if `azure-storage` is installed) |
-| AWS S3   | YES | YES | YES (if `boto` is installed and `host` key added to `driver_options`) |
-| Rackspace | YES | YES | No |
+| Azure    | NO | NO | NO |
+| AWS S3   | NO | NO | NO |
+| GCP | YES | YES | YES |
 
 # What are "Secure URLs"?
 
@@ -74,18 +72,24 @@ changed by setting expected lifetime(in seconds) as `ckanext.cloudstorage.secure
 If you already have resources that have been uploaded and saved using CKAN's
 built-in FileStorage, cloudstorage provides an easy migration command.
 Simply setup cloudstorage as explained above, enable the plugin, and run the
-migrate command. Provide the path to your resources on-disk (the
-`ckan.storage_path` setting in your CKAN `.ini` + `/resources`), and
-cloudstorage will take care of the rest. Ex:
+migrate commands. First the following command will check if any resource that exists in the resouce tables is missing in FileStore
 
-    paster cloudstorage migrate <path to files> -c ../ckan/development.ini
+    ckan -c ../ckan/development.ini cloudstorage check-resources
+
+The following command will migrate the resources:
+
+    ckan -c ../ckan/development.ini cloudstorage migrate
+
+The following command will migrate all the images and the assets:
+
+    ckan -c ../ckan/development.ini cloudstorage assets-to-gcp
+
 
 # Notes
 
 1. You should disable public listing on the cloud service provider you're
    using, if supported.
-2. Currently, only resources are supported. This means that things like group
-   and organization images still use CKAN's local file storage.
+2. On this branch things like group and organization images are supported and they also use the S3 storage.
 
 # FAQ
 
@@ -93,9 +97,8 @@ cloudstorage will take care of the rest. Ex:
   your hosting service? ckanext-cloudstorage can try to fix them for you automatically,
   run:
 
-        paster cloudstorage fix-cors <list of your domains> -c=<CKAN config>
+        ckan -c=<CKAN config> cloudstorage fix-cors <list of your domains> 
 
-- *Help! I can't seem to get it working!* - send me a mail! tk@tkte.ch
 
 [libcloud]: https://libcloud.apache.org/
 [ckan]: http://ckan.org/
