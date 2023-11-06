@@ -642,21 +642,6 @@ class ResourceCloudStorage(CloudStorage):
     def package(self):
         return model.Package.get(self.resource["package_id"])
 
-#delete this function after upload to cloud implementation
-def _copy_file(input_file, output_file, max_size):
-    input_file.seek(0)
-    current_size = 0
-    while True:
-        current_size = current_size + 1
-        # MB chunks
-        MB = 1024*1024 
-        data = input_file.read(MB)
-
-        if not data:
-            break
-        output_file.write(data)
-        if current_size > max_size:
-            raise logic.ValidationError({'upload': ['File upload too large']})
 
 class ItemCloudStorage(Upload):
     
