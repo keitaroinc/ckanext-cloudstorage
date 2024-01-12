@@ -142,6 +142,8 @@ def assets_to_gcp():
         s3_file_path = file_name
         if storage_path in file_name:
             s3_file_path = s3_file_path.replace(storage_path, "")
+        # Strip the first character ("/") from the path
+        s3_file_path = s3_file_path[1:]
         blob = bucket.blob(s3_file_path)
         blob.upload_from_filename(file_name)
         print('{file_name} was uploaded'.format(file_name=file_name))
