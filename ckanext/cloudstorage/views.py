@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from flask import Blueprint
-from ckanext.cloudstorage.helpers import generate_download_signed_url_v4
+from ckanext.cloudstorage.helpers import generate_download_signed_url_v2
 import ckantoolkit as tk
 import os
 import ckanext.cloudstorage.utils as utils
@@ -29,7 +29,7 @@ def uploaded_file_redirect(upload_to, filename):
     
     storage_path = get_storage_path(upload_to)
     filepath = os.path.join(storage_path, filename)
-    url = generate_download_signed_url_v4(filepath)
+    url = generate_download_signed_url_v2(filepath)
 
     return redirect(url, code=302)
 

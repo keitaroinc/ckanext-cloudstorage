@@ -27,7 +27,7 @@ def max_upload_size():
     return tk.config.get("ckanext.cloudstorage.max_upload_size_gb")
 
 
-def generate_download_signed_url_v4(blob_name):
+def generate_download_signed_url_v2(blob_name):
     """Generates a v4 signed URL for downloading a blob.
 
     Note that this method requires a service account key file. You can not use
@@ -46,9 +46,9 @@ def generate_download_signed_url_v4(blob_name):
     blob = bucket.blob(blob_name)
 
     url = blob.generate_signed_url(
-        version="v4",
-        # This URL is valid for 24 hours
-        expiration=datetime.timedelta(hours=24),
+        version="v2",
+        # This URL is valid for 365 hours
+        expiration=datetime.timedelta(days=365),
         # Allow GET requests using this URL.
         method="GET",
     )

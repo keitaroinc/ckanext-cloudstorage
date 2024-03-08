@@ -461,8 +461,6 @@ class ResourceCloudStorage(CloudStorage):
         request_timestamp = datetime_now.strftime('%Y%m%dT%H%M%SZ')
         datestamp = datetime_now.strftime('%Y%m%d')
 
-        print("GOOGLE STORAGE - BUCKET NAME: ")
-        print(bucket_name)
 
         # Load file with the service account information from the config file (ckan.ini)
         service_account_path = config['ckanext.cloudstorage.google_service_account_json']
