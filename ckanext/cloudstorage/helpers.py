@@ -47,8 +47,8 @@ def generate_download_signed_url_v2(blob_name):
 
     url = blob.generate_signed_url(
         version="v2",
-        # This URL is valid for 365 days
-        expiration=datetime.timedelta(days=365),
+        # This URL is valid for 1 hour
+        expiration=datetime.timedelta(hours=1),
         # Allow GET requests using this URL.
         method="GET",
     )
