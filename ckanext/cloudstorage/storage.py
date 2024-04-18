@@ -36,6 +36,8 @@ config = p.toolkit.config
 
 log = logging.getLogger(__name__)
 
+_storage_path = None
+
 ALLOWED_UPLOAD_TYPES = (cgi.FieldStorage, FlaskFileStorage)
 AWS_UPLOAD_PART_SIZE = 5 * 1024 * 1024
 
@@ -74,6 +76,22 @@ def _md5sum(fobj):
     hash_obj.update(md5string)
     return hash_obj.hexdigest() + "-" + str(block_count)
 
+
+def get_storage_path():
+    '''Function to cache storage path'''
+    global _storage_path
+
+    # None means it has not been set. False means not in config.
+    if _storage_path is None:
+        storage_path = config.get('ckan.storage_path')
+        if storage_path:
+            _storage_path = storage_path
+        else:
+            log.critical('''Please specify a ckan.storage_path in your config
+                        for your uploads''')
+            _storage_path = False
+
+    return _storage_path
 
 class CloudStorage(object):
     def __init__(self):
@@ -237,7 +255,12 @@ class ResourceCloudStorage(CloudStorage):
         :param resource: The resource dict.
         """
         super(ResourceCloudStorage, self).__init__()
-
+        
+        path = get_storage_path()
+        if not path:
+            self.storage_path = None
+            return
+        self.storage_path = os.path.join(path, 'resources')
         self.filename = None
         self.old_filename = None
         self.file = None
@@ -280,6 +303,24 @@ class ResourceCloudStorage(CloudStorage):
 
             self.old_filename = old_resource.url
             resource["url_type"] = ""
+    
+    def get_directory(self, id):
+        real_storage = os.path.realpath(self.storage_path)
+        directory = os.path.join(real_storage, id[0:3], id[3:6])
+        if directory != os.path.realpath(directory):
+            raise logic.ValidationError(
+                {'upload': ['Invalid storage directory']})
+        return directory
+    
+    def get_path(self, id):
+
+        directory = self.get_directory(id)
+        filepath = os.path.join(directory, id[6:])
+
+        if filepath != os.path.realpath(filepath):
+            raise logic.ValidationError({'upload': ['Invalid storage path']})
+
+        return filepath
 
     def path_from_filename(self, rid, filename):
         """
