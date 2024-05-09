@@ -36,6 +36,9 @@ config = p.toolkit.config
 
 log = logging.getLogger(__name__)
 
+storage.blob._DEFAULT_CHUNKSIZE = 2 * 1024 * 1024  # 2 MB
+storage.blob._MAX_MULTIPART_SIZE = 2 * 1024 * 1024  # 2 MB
+
 ALLOWED_UPLOAD_TYPES = (cgi.FieldStorage, FlaskFileStorage)
 AWS_UPLOAD_PART_SIZE = 5 * 1024 * 1024
 
