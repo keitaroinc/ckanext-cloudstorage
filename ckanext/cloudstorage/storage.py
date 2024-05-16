@@ -304,21 +304,29 @@ class ResourceCloudStorage(CloudStorage):
             self.old_filename = old_resource.url
             resource["url_type"] = ""
     
-    def get_directory(self, id):
-        real_storage = os.path.realpath(self.storage_path)
-        directory = os.path.join(real_storage, id[0:3], id[3:6])
-        if directory != os.path.realpath(directory):
-            raise logic.ValidationError(
-                {'upload': ['Invalid storage directory']})
-        return directory
+    # CKAN's get_directory and get_path are obsolete here
+    # def get_directory(self, id):
+    #     real_storage = os.path.realpath(self.storage_path)
+    #     directory = os.path.join(real_storage, id[0:3], id[3:6])
+    #     if directory != os.path.realpath(directory):
+    #         raise logic.ValidationError(
+    #             {'upload': ['Invalid storage directory']})
+    #     return directory
     
-    def get_path(self, id):
+    # def get_path(self, id):
 
-        directory = self.get_directory(id)
-        filepath = os.path.join(directory, id[6:])
+    #     directory = self.get_directory(id)
+    #     filepath = os.path.join(directory, id[6:])
 
-        if filepath != os.path.realpath(filepath):
-            raise logic.ValidationError({'upload': ['Invalid storage path']})
+    #     if filepath != os.path.realpath(filepath):
+    #         raise logic.ValidationError({'upload': ['Invalid storage path']})
+
+    #     return filepath
+
+    def get_bucket_path(self, id):
+
+        directory = "resources"
+        filepath = os.path.join(directory, id)
 
         return filepath
 
