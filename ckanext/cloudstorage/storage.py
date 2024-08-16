@@ -463,6 +463,9 @@ class ResourceCloudStorage(CloudStorage):
                     storage_client = storage.Client.from_service_account_json(path_to_json)
                     bucket = storage_client.bucket(bucket_name)
                     blob = bucket.blob(object_name)
+                    content_type, _ = mimetypes.guess_type(self.filename)
+                    if content_type:
+                        blob.content_type = content_type
                     blob.upload_from_file(file_upload)
             
                     log.debug(
