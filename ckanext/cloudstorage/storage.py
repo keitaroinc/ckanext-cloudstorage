@@ -27,6 +27,11 @@ import collections
 import sys
 import ckan.logic as logic
 
+logging.basicConfig(
+    level=logging.DEBUG,  # You can change this to logging.INFO for less verbosity
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 # google-auth
 from google.oauth2 import service_account
 import six
@@ -414,8 +419,21 @@ class ResourceCloudStorage(CloudStorage):
                     storage_client = storage.Client.from_service_account_json(path_to_json)
                     bucket = storage_client.bucket(bucket_name)
                     blob = bucket.blob(object_name)
-                    blob.upload_from_file(file_upload)
-            
+
+
+                    # Log the upload attempt
+                    logging.info(f"Uploading to {object_name} in bucket {bucket_name}.")
+                    print((f"Uploading to {object_name} in bucket {bucket_name}."))
+                    try:
+                        blob.upload_from_file(file_upload)
+                        logging.info(f"File uploaded to {blob.name}.")
+                        print(f"File uploaded to {blob.name}.")
+                    except Exception as e:
+                        logging.error(f"Failed to upload file {blob.name} to {bucket_name}: {e}")
+                        print(f"Failed to upload file {blob.name} to {bucket_name}: {e}")
+                        raise
+
+
                     log.debug(
                          "\t => UPLOADED %s: %s", self.filename, object_name
                      )
