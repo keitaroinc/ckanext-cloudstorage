@@ -48,6 +48,10 @@ AWS_UPLOAD_PART_SIZE = 5 * 1024 * 1024
 CONFIG_SECURE_TTL = "ckanext.cloudstorage.secure_ttl"
 DEFAULT_SECURE_TTL = 3600
 
+# DEFINE STORAGE CHUNKSIZE
+storage.blob._DEFAULT_CHUNKSIZE = 5 * 1024* 1024  # 5 MB
+storage.blob._MAX_MULTIPART_SIZE = 5 * 1024* 1024  # 5 MB
+
 
 def config_secure_ttl():
     return p.toolkit.asint(p.toolkit.config.get(
