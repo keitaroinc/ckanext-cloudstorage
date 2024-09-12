@@ -37,8 +37,8 @@ config = p.toolkit.config
 log = logging.getLogger(__name__)
 
 chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '2'))
-storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 5 MB default
-storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 5 MB default
+storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 2 MB default
+storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 2 MB default
 
 ALLOWED_UPLOAD_TYPES = (cgi.FieldStorage, FlaskFileStorage)
 AWS_UPLOAD_PART_SIZE = 5 * 1024 * 1024
