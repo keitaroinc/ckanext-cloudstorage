@@ -47,6 +47,11 @@ AWS_UPLOAD_PART_SIZE = 5 * 1024 * 1024
 CONFIG_SECURE_TTL = "ckanext.cloudstorage.secure_ttl"
 DEFAULT_SECURE_TTL = 3600
 
+# DEFINE STORAGE CHUNKSIZE
+chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '2'))
+storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 2 MB default
+storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 2 MB default
+
 
 def config_secure_ttl():
     return p.toolkit.asint(p.toolkit.config.get(
@@ -418,7 +423,15 @@ class ResourceCloudStorage(CloudStorage):
                     storage_client = storage.Client.from_service_account_json(path_to_json)
                     bucket = storage_client.bucket(bucket_name)
                     blob = bucket.blob(object_name)
-                    blob.upload_from_file(file_upload)
+                    content_type, _ = mimetypes.guess_type(self.filename)
+                    if content_type:
+                        blob.content_type = content_type
+
+                    try:
+                        blob.upload_from_file(file_upload, timeout=300)
+                    except:
+                        logging.error(f"Failed to upload file {blob.name} to {bucket_name}")
+                        raise
             
                     log.debug(
                          "\t => UPLOADED %s: %s", self.filename, object_name
