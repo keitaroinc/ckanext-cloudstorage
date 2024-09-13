@@ -52,9 +52,6 @@ DEFAULT_SECURE_TTL = 3600
 chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '2'))
 storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 2 MB default
 storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 2 MB default
-print("==============default chunksize============================")
-print(storage.blob._DEFAULT_CHUNKSIZE)
-print("==============default chunksize============================")
 
 def config_secure_ttl():
     return p.toolkit.asint(p.toolkit.config.get(
