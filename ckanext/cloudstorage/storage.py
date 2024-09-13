@@ -49,9 +49,12 @@ CONFIG_SECURE_TTL = "ckanext.cloudstorage.secure_ttl"
 DEFAULT_SECURE_TTL = 3600
 
 # DEFINE STORAGE CHUNKSIZE
-storage.blob._DEFAULT_CHUNKSIZE = 5 * 1024* 1024  # 5 MB
-storage.blob._MAX_MULTIPART_SIZE = 5 * 1024* 1024  # 5 MB
-
+chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '2'))
+storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 2 MB default
+storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 2 MB default
+print("==============default chunksize============================")
+print(storage.blob._DEFAULT_CHUNKSIZE)
+print("==============default chunksize============================")
 
 def config_secure_ttl():
     return p.toolkit.asint(p.toolkit.config.get(
@@ -427,14 +430,22 @@ class ResourceCloudStorage(CloudStorage):
 
                     # Log the upload attempt
                     logging.info(f"Uploading to {object_name} in bucket {bucket_name}.")
+                    print("======================================================")
                     print((f"Uploading to {object_name} in bucket {bucket_name}."))
+                    print("======================================================")
                     try:
-                        blob.upload_from_file(file_upload)
+                        print("=================starting upload=================")
+                        blob.upload_from_file(file_upload, timeout=300)
+                        print("=================finished upload====================")
                         logging.info(f"File uploaded to {blob.name}.")
                         print(f"File uploaded to {blob.name}.")
+                        print("=================finished upload====================")
                     except Exception as e:
+                        print("=================upload goes in exeption block==============")
                         logging.error(f"Failed to upload file {blob.name} to {bucket_name}: {e}")
+                        print("===========error uploading===============")
                         print(f"Failed to upload file {blob.name} to {bucket_name}: {e}")
+                        print("===========error uploading===============")
                         raise
 
 
