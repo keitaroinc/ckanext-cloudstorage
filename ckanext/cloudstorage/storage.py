@@ -36,9 +36,10 @@ config = p.toolkit.config
 
 log = logging.getLogger(__name__)
 
-chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '2'))
-storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 2 MB default
-storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 2 MB default
+# DEFINE STORAGE CHUNKSIZE
+chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '16'))
+storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 16 MB default
+storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 16 MB default
 
 ALLOWED_UPLOAD_TYPES = (cgi.FieldStorage, FlaskFileStorage)
 AWS_UPLOAD_PART_SIZE = 5 * 1024 * 1024
@@ -46,11 +47,6 @@ AWS_UPLOAD_PART_SIZE = 5 * 1024 * 1024
 
 CONFIG_SECURE_TTL = "ckanext.cloudstorage.secure_ttl"
 DEFAULT_SECURE_TTL = 3600
-
-# DEFINE STORAGE CHUNKSIZE
-chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '2'))
-storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 2 MB default
-storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 2 MB default
 
 
 def config_secure_ttl():
@@ -428,7 +424,7 @@ class ResourceCloudStorage(CloudStorage):
                         blob.content_type = content_type
 
                     try:
-                        blob.upload_from_file(file_upload, timeout=300)
+                        blob.upload_from_file(file_upload, timeout=600)
                     except:
                         logging.error(f"Failed to upload file {blob.name} to {bucket_name}")
                         raise
