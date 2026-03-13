@@ -31,7 +31,7 @@ def uploaded_file_redirect(upload_to, filename):
     filepath = os.path.join(storage_path, filename)
     url = generate_download_signed_url_v4(filepath)
 
-    return redirect(url)
+    return redirect(url, code=302)
 
 
 s3_uploads.add_url_rule(u'/uploads/<upload_to>/<filename>',
