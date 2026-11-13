@@ -40,7 +40,14 @@ class TestCloudstoragePlugin(object):
         assert uploader.get_url_from_filename(resource["id"], name)
 
         helpers.call_action("resource_delete", id=resource["id"])
-        assert uploader.get_url_from_filename(resource["id"], name) is None
+        if "GOOGLE_STORAGE" in uploader.driver_name:
+            # the GCS url is signed locally, without checking the bucket
+            with pytest.raises(ObjectDoesNotExistError):
+                uploader.container.get_object(
+                    uploader.path_from_filename(resource["id"], name)
+                )
+        else:
+            assert uploader.get_url_from_filename(resource["id"], name) is None
 
     def test_before_delete_for_linked_resource(self):
         """Non-uploads don't raise exceptions."""

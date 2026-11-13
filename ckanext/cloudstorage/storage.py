@@ -8,6 +8,7 @@ import mimetypes
 import os
 from tempfile import NamedTemporaryFile
 import tempfile
+import threading
 import traceback
 from ast import literal_eval
 from datetime import datetime, timedelta
@@ -24,7 +25,6 @@ from werkzeug.datastructures import FileStorage as FlaskFileStorage
 from google.cloud import storage
 
 import collections
-import sys
 import ckan.logic as logic
 
 # google-auth
@@ -51,6 +51,38 @@ DEFAULT_SECURE_TTL = 3600
 chunk_size = int(config.get('ckanext.cloudstorage.chunk_size', '2'))
 storage.blob._DEFAULT_CHUNKSIZE = chunk_size * 1024 * 1024  # 2 MB default
 storage.blob._MAX_MULTIPART_SIZE = chunk_size * 1024 * 1024  # 2 MB default
+
+
+# Service-account credentials, loaded once per process and keyed by the path
+# of the JSON key file. Only the credentials are cached here: libcloud drivers
+# and containers hold connections that are not thread-safe and must stay
+# per-instance. A rotated key file is picked up on process restart.
+_gcp_credentials_cache = {}
+_gcp_credentials_lock = threading.Lock()
+
+
+def _get_gcp_credentials():
+    """
+    Return the Google service-account credentials configured through
+    ``ckanext.cloudstorage.google_service_account_json``.
+
+    The JSON key file is read and parsed only once per process.
+    """
+    service_account_path = config[
+        'ckanext.cloudstorage.google_service_account_json'
+    ]
+    credentials = _gcp_credentials_cache.get(service_account_path)
+    if credentials is None:
+        with _gcp_credentials_lock:
+            credentials = _gcp_credentials_cache.get(service_account_path)
+            if credentials is None:
+                credentials = (
+                    service_account.Credentials.from_service_account_file(
+                        service_account_path
+                    )
+                )
+                _gcp_credentials_cache[service_account_path] = credentials
+    return credentials
 
 
 def config_secure_ttl():
@@ -468,8 +500,9 @@ class ResourceCloudStorage(CloudStorage):
         import datetime # importing here just to make sure it doesn't break anything with the previous imports 
 
         if expiration > 604800: # 7 days (in seconds)
-            print('Expiration Time can\'t be longer than 604800 seconds (7 days).')
-            sys.exit(1)
+            raise ValueError(
+                'Expiration Time can\'t be longer than 604800 seconds (7 days).'
+            )
 
         escaped_object_name = quote(six.ensure_binary(object_name), safe=b'/~')
         canonical_uri = '/{}'.format(escaped_object_name)
@@ -479,11 +512,9 @@ class ResourceCloudStorage(CloudStorage):
         datestamp = datetime_now.strftime('%Y%m%d')
 
 
-        # Load file with the service account information from the config file (ckan.ini)
-        service_account_path = config['ckanext.cloudstorage.google_service_account_json']
-
-        google_credentials = service_account.Credentials.from_service_account_file(
-            service_account_path) #providing the path to the json file with the service account information
+        # Service account information from the json file set in the config
+        # file (ckan.ini), loaded once per process
+        google_credentials = _get_gcp_credentials()
         client_email = google_credentials.service_account_email
         credential_scope = '{}/auto/storage/goog4_request'.format(datestamp)
         credential = '{}/{}'.format(client_email, credential_scope)
@@ -611,6 +642,14 @@ class ResourceCloudStorage(CloudStorage):
                 generate_url_params["response_headers"] = {"Content-Type": content_type}
             return s3_connection.generate_url_sigv4(**generate_url_params)
 
+        # Since we are using GCP, we need to generate a signed URL for downloading the files we want,
+        # because the initial google_storage driver (from the libcloud library) does not support the get_object_cdn_url method.
+        # The URL is signed locally, before any call to the container: no
+        # request is sent to GCS, so a file missing from the bucket is
+        # reported by GCS when the URL is followed, not by a 404 here.
+        if "GOOGLE_STORAGE" in self.driver_name:
+            # bucket is the GCP bucket, path is the file name (blob)
+            return self.generate_signed_url_gcp(self.container_name, path)
 
         # Find the object for the given key.
         try:
@@ -622,21 +661,8 @@ class ResourceCloudStorage(CloudStorage):
 
         # Not supported by all providers!
         try:
-            # Since we are using GCP, we need to generate a signed URL for downloading the files we want,
-            # because the initial google_storage driver (from the libcloud library) does not support the get_object_cdn_url method
-            if "GOOGLE_STORAGE" in self.driver_name:
-                print("Using GOOGLE_STORAGE DRIVER")
+            return self.driver.get_object_cdn_url(obj)
 
-                bucket = self.container_name
-
-                url = self.generate_signed_url_gcp(bucket, path) #bucket is the GCP bucket, path is the file name (blob)
-                print("Generated GET signed URL:")
-                print(url)
-                return url
-            
-            else:
-                return self.driver.get_object_cdn_url(obj)
-            
         except NotImplementedError:
             if "S3" in self.driver_name:
                 return urljoin(
